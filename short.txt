@@ -1,0 +1,6 @@
+permission
+copper
+operation
+cop
+rationale
+rest
