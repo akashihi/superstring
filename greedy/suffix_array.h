@@ -1,8 +1,8 @@
-//
-// Created by chapde on 6/20/2019.
-//
+#pragma once
+#include <algorithm>
+#include <cstring>
+#include <memory.h>
+#include <iostream>
+#include <string.h>
 
-#ifndef GREEDY_SUFFIX_ARRAY_H
-#define GREEDY_SUFFIX_ARRAY_H
-
-#endif //GREEDY_SUFFIX_ARRAY_H
+std::vector<int> buildSuffixArray(const std::string& str);
