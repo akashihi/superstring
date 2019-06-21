@@ -89,3 +89,13 @@ std::vector<int> buildSuffixArray(const std::string& str) {
 
     return  result;
 }
+
+t_SuffixMap buildSuffixMap(const std::string& str) {
+    t_SuffixMap result;
+
+    for(int indx = 0; indx < str.size(); ++indx) {
+        result[str.at(indx)].push_back(indx);
+    }
+
+    return result;
+}

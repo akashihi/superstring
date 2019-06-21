@@ -17,3 +17,7 @@ include(CTest)
 add_executable(test_suffix_array test/test_suffix_array.cpp suffix_array.h suffix_array.cpp)
 target_link_libraries(test_suffix_array ${Boost_LIBRARIES})
 add_test(SuffixArray test_suffix_array)
+
+add_executable(test_suffix_map test/test_suffix_map.cpp suffix_array.h suffix_array.cpp)
+target_link_libraries(test_suffix_map ${Boost_LIBRARIES})
+add_test(SuffixMap test_suffix_map)

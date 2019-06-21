@@ -6,9 +6,9 @@ using namespace boost::unit_test;
 
 #include "../suffix_array.h"
 
-typedef std::tuple<std::string, std::vector<int>> SuffixArrayTestParams;
+typedef std::tuple<std::string, std::vector<int>> SuffixMapTestParams;
 
-void checkSuffixArray(const SuffixArrayTestParams& params) {
+void checkSuffixArray(const SuffixMapTestParams& params) {
     const auto& [problem, expected] = params;
     auto actual = buildSuffixArray(problem);
 
@@ -17,7 +17,7 @@ void checkSuffixArray(const SuffixArrayTestParams& params) {
 
 test_suite* init_unit_test_suite(int,char**)
 {
-    SuffixArrayTestParams params[] = {
+    SuffixMapTestParams params[] = {
             std::make_tuple<std::string, std::vector<int>>("banana", {5, 3, 1, 0, 4, 2}),
             std::make_tuple<std::string, std::vector<int>>("abracadabra", {10, 7, 0, 3, 5, 8, 1, 4, 6, 9, 2})
     };
