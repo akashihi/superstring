@@ -2,17 +2,12 @@
 #include <fstream>
 #include <iterator>
 #include <iostream>
-#include <list>
 #include <set>
 #include <string>
 #include <vector>
 #include <boost/algorithm/string.hpp>
 #include <boost/sort/sort.hpp>
 #include "suffix_ops.h"
-
-namespace {
-
-}
 
 int main(int argc, char** argv) {
     if (argc<2) {
@@ -30,18 +25,28 @@ int main(int argc, char** argv) {
     boost::sort::pdqsort(std::begin(inputStrings), std::end(inputStrings), [](const std::string& left, const std::string right) { return left.size() > right.size(); });
     std::cout << "Loaded " << inputStrings.size() << " words" << std::endl;
 
-    //1 - Calculate suffix map for each dataset entry
+    //1 - Drop shorter words which are contained in a longer ones
+    std::set<std::string> contained;
+    for(auto outer = inputStrings.cbegin(); outer != inputStrings.cend(); ++outer) {
+        for (auto inner = outer+1; inner != inputStrings.cend(); ++inner ) {
+            if (boost::algorithm::contains(*outer, *inner)) {
+                std::cout << *outer << " contains " << *inner << std::endl;
+                contained.insert(*inner);
+            }
+        }
+    }
+    inputStrings.erase(std::remove_if(inputStrings.begin(), inputStrings.end(), [&contained](auto item) { return contained.find(item) != contained.end(); }), inputStrings.end());
+
+    //2 - Calculate suffix map for each dataset entry
     std::vector<t_StringWithSuffix> stringSuffixes;
     std::transform(std::begin(inputStrings), std::end(inputStrings), std::back_inserter(stringSuffixes), [](const std::string& str) {
         return std::make_tuple(str, buildSuffixMap(str));
     });
 
-    //2 - Greedy solver
+    //3 - Greedy solver
     std::string result;
     for(auto outer = stringSuffixes.cbegin(); outer != stringSuffixes.cend();) {
         auto [outerStr, outerSuffixMap] = *outer;
-
-        std::set<std::string> duplicates;
 
         std::string matchPrefix;
         int maxSuffix = 0;
@@ -51,11 +56,6 @@ int main(int argc, char** argv) {
         for (auto inner = outer+1; inner != stringSuffixes.cend(); ++inner ) {
             auto [innerStr, innerSuffixMap] = *inner;
             //std::cout << "Outer is: " << outerStr << ", inner is: " << innerStr << std::endl;
-            if (boost::algorithm::contains(outerStr, innerStr)) {
-                std::cout << innerStr << " is contained in the "<< outerStr << ", removing" << std::endl;
-                duplicates.insert(innerStr);
-                continue;
-            }
             if (maxSuffix > innerStr.size()) {
                 //No reason to continue, as all following words are shorter.
                 //But we will not break up the cycle, as we want to find other fully
@@ -82,20 +82,17 @@ int main(int argc, char** argv) {
 
             result += outerStr;
             result.append(matchPrefix.begin()+maxSuffix, matchPrefix.end());
-            duplicates.insert(matchPrefix);
+            stringSuffixes.erase(std::remove_if(stringSuffixes.begin(), stringSuffixes.end(), [&matchPrefix](auto item) { return std::get<0>(item) == matchPrefix; }), stringSuffixes.end());
         } else if (maxPrefix > 0) {
             std::cout << "Best suffix for " << outerStr << " is a " << matchSuffix << " with " << maxPrefix << " common characters" << std::endl;
             std::cout << "Leftover of matched string is: " << std::string(outerStr.begin()+maxPrefix, outerStr.end()) << std::endl;
 
             result += matchSuffix;
-            result.append(outerStr.begin()+maxSuffix, outerStr.end());
-            duplicates.insert(matchSuffix);
+            result.append(outerStr.begin()+maxPrefix, outerStr.end());
+            stringSuffixes.erase(std::remove_if(stringSuffixes.begin(), stringSuffixes.end(), [&matchSuffix](auto item) { return std::get<0>(item) == matchSuffix; }), stringSuffixes.end());
         } else {
             result += outerStr;
         }
-
-
-        stringSuffixes.erase(std::remove_if(stringSuffixes.begin(), stringSuffixes.end(), [&duplicates](auto item) { return duplicates.find(std::get<0>(item)) != duplicates.end(); }), stringSuffixes.end());
 
         ++outer;
     }
