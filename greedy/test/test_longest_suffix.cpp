@@ -4,7 +4,7 @@ using namespace boost::unit_test;
 
 #include <tuple>
 
-#include "../suffix_array.h"
+#include "../suffix_ops.h"
 
 typedef std::tuple<std::string, std::string, int> LongestSuffixTestParams;
 

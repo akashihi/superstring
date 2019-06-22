@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "suffix_array.h"
+#include "suffix_ops.h"
 
 int main(int argc, char** argv) {
     if (argc<2) {
