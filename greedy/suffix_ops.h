@@ -12,6 +12,8 @@
  */
 typedef std::map<const char, std::vector<int>> t_SuffixMap;
 
+typedef std::tuple<std::string, t_SuffixMap> t_StringWithSuffix;
+
 /**
  * Takes a string and builds map of characters and their positions.
  * @param str String to process
