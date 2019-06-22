@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
     std::cout << "Loaded " << inputStrings.size() << " words" << std::endl;
 
     //1 - Calculate suffix map for each dataset entry
-    std::list<t_StringWithSuffix> stringSuffixes;
+    std::vector<t_StringWithSuffix> stringSuffixes;
     std::transform(std::begin(inputStrings), std::end(inputStrings), std::back_inserter(stringSuffixes), [](const std::string& str) {
         return std::make_tuple(str, buildSuffixMap(str));
     });
@@ -39,22 +39,20 @@ int main(int argc, char** argv) {
     //2 - Greedy solver
     std::string result;
     for(auto outer = stringSuffixes.cbegin(); outer != stringSuffixes.cend();) {
-        auto [outerStr, suffixMap] = *outer;
+        auto [outerStr, outerSuffixMap] = *outer;
 
         std::set<std::string> duplicates;
 
-        std::string match;
+        std::string matchPrefix;
         int maxSuffix = 0;
+        std::string matchSuffix;
+        int maxPrefix = 0;
 
-        for (auto inner = outer; inner != stringSuffixes.cend(); ++inner ) {
-            const std::string& innerStr = std::get<0>(*inner);
+        for (auto inner = outer+1; inner != stringSuffixes.cend(); ++inner ) {
+            auto [innerStr, innerSuffixMap] = *inner;
             //std::cout << "Outer is: " << outerStr << ", inner is: " << innerStr << std::endl;
-            if (outer == inner || outerStr == innerStr) {
-                //Found self, skipping
-                continue;
-            }
             if (boost::algorithm::contains(outerStr, innerStr)) {
-                //std::cout << "Inner is contained in the outer, removing" << std::endl;
+                std::cout << innerStr << " is contained in the "<< outerStr << ", removing" << std::endl;
                 duplicates.insert(innerStr);
                 continue;
             }
@@ -64,18 +62,38 @@ int main(int argc, char** argv) {
                 //contained words
                 continue;
             }
-            int suffix = longestSuffix(innerStr, outerStr, suffixMap);
+            int suffix = longestSuffix(innerStr, outerStr, outerSuffixMap);
             if (suffix > maxSuffix) {
                 maxSuffix = suffix;
-                match = innerStr;
+                matchPrefix = innerStr;
+            }
+
+            //Try opposite direction
+            int prefix = longestSuffix(outerStr, innerStr, innerSuffixMap);
+            if (prefix > maxPrefix) {
+                maxPrefix = prefix;
+                matchSuffix = innerStr;
             }
         }
-        result += outerStr;
 
-        if (maxSuffix > 0) {
-            result.append(match.begin()+maxSuffix, match.end());
-            duplicates.insert(match);
+        if (maxSuffix > 0 && maxSuffix > maxPrefix) {
+            std::cout << "Best prefix for " << outerStr << " is a " << matchPrefix << " with " << maxSuffix << " common characters" << std::endl;
+            std::cout << "Leftover of matched string is: " << std::string(matchPrefix.begin()+maxSuffix, matchPrefix.end()) << std::endl;
+
+            result += outerStr;
+            result.append(matchPrefix.begin()+maxSuffix, matchPrefix.end());
+            duplicates.insert(matchPrefix);
+        } else if (maxPrefix > 0) {
+            std::cout << "Best suffix for " << outerStr << " is a " << matchSuffix << " with " << maxPrefix << " common characters" << std::endl;
+            std::cout << "Leftover of matched string is: " << std::string(outerStr.begin()+maxPrefix, outerStr.end()) << std::endl;
+
+            result += matchSuffix;
+            result.append(outerStr.begin()+maxSuffix, outerStr.end());
+            duplicates.insert(matchSuffix);
+        } else {
+            result += outerStr;
         }
+
 
         stringSuffixes.erase(std::remove_if(stringSuffixes.begin(), stringSuffixes.end(), [&duplicates](auto item) { return duplicates.find(std::get<0>(item)) != duplicates.end(); }), stringSuffixes.end());
 
