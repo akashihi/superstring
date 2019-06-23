@@ -15,11 +15,28 @@
 #define DEBUG(MSG)
 #endif
 
+void progress(int current, int total) {
+    float progress = static_cast<float>(current)/total;
+    int barWidth = 70;
+    std::cout << "[";
+    int pos = barWidth * progress;
+    for (int i = 0; i < barWidth; ++i) {
+        if (i < pos) std::cout << "=";
+        else if (i == pos) std::cout << ">";
+        else std::cout << " ";
+    }
+    std::cout << "] " << int(progress * 100.0) << " %\r";
+    std::cout.flush();
+}
+
 int main(int argc, char** argv) {
     if (argc<2) {
         std::cerr << "Usage: greedy <file_with_strings>" << std::endl;
         return 1;
     }
+
+    //Progress indicator variables
+    int totalWords = 0, seenWords = 0;
 
     //0 - Load the file
     std::ifstream inputFile(argv[1]);
@@ -28,11 +45,15 @@ int main(int argc, char** argv) {
               std::istream_iterator<std::string>(),
               std::back_inserter(inputStrings));
     boost::sort::pdqsort(std::begin(inputStrings), std::end(inputStrings), [](const std::string& left, const std::string right) { return left.size() > right.size(); });
-    std::cout << "Loaded " << inputStrings.size() << "words" << std::endl;
+    std::cout << "Loaded " << inputStrings.size() << " words" << std::endl;
 
     //1 - Drop shorter words which are contained in a longer ones
+    std::cout << "Dropping contained words" << std::endl;
+    totalWords = inputStrings.size();
     std::set<std::string> contained;
     for(auto outer = inputStrings.cbegin(); outer != inputStrings.cend(); ++outer) {
+        ++seenWords;
+        progress(seenWords, totalWords);
         for (auto inner = outer+1; inner != inputStrings.cend(); ++inner ) {
             if (boost::algorithm::contains(*outer, *inner)) {
                 DEBUG(*outer << " contains " << *inner)
@@ -41,17 +62,32 @@ int main(int argc, char** argv) {
         }
     }
     inputStrings.erase(std::remove_if(inputStrings.begin(), inputStrings.end(), [&contained](auto item) { return contained.find(item) != contained.end(); }), inputStrings.end());
+    std::cout << std::endl;
 
     //2 - Calculate suffix map for each dataset entry
+    std::cout << "Building suffix map" << std::endl;
+    totalWords = inputStrings.size();
+    seenWords = 0;
     std::vector<t_StringWithSuffix> stringSuffixes;
-    std::transform(std::begin(inputStrings), std::end(inputStrings), std::back_inserter(stringSuffixes), [](const std::string& str) {
+    std::transform(std::begin(inputStrings), std::end(inputStrings), std::back_inserter(stringSuffixes), [&seenWords, totalWords](const std::string& str) {
+        ++seenWords;
+        progress(seenWords, totalWords);
         return std::make_tuple(str, buildSuffixMap(str));
     });
+    std::cout << std::endl;
 
     //3 - Greedy solver
+    std::cout << "Making a superstring" << std::endl;
+    totalWords = stringSuffixes.size();
+    seenWords = 0;
+
     std::string result;
     for(auto outer = stringSuffixes.cbegin(); outer != stringSuffixes.cend();) {
         auto [outerStr, outerSuffixMap] = *outer;
+
+        totalWords = stringSuffixes.size();
+        ++seenWords;
+        progress(seenWords, totalWords);
 
         std::string matchPrefix;
         int maxSuffix = 0;
@@ -99,6 +135,7 @@ int main(int argc, char** argv) {
 
         ++outer;
     }
+    std::cout << std::endl;
 
     std::cout << "Super string length is " << result.size() << std::endl;
     DEBUG("Super string is " << result)
