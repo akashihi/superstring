@@ -56,11 +56,9 @@ int main(int argc, char** argv) {
         for (auto inner = outer+1; inner != stringSuffixes.cend(); ++inner ) {
             auto [innerStr, innerSuffixMap] = *inner;
             //std::cout << "Outer is: " << outerStr << ", inner is: " << innerStr << std::endl;
-            if (maxSuffix > innerStr.size()) {
+            if (maxSuffix > innerStr.size() || maxPrefix > innerStr.size()) {
                 //No reason to continue, as all following words are shorter.
-                //But we will not break up the cycle, as we want to find other fully
-                //contained words
-                continue;
+                break;
             }
             int suffix = longestSuffix(innerStr, outerStr, outerSuffixMap);
             if (suffix > maxSuffix) {
