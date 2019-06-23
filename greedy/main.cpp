@@ -9,9 +9,15 @@
 #include <boost/sort/sort.hpp>
 #include "suffix_ops.h"
 
+#ifndef NDEBUG
+#define DEBUG(MSG) std::cout << MSG << std::endl;
+#else
+#define DEBUG(MSG)
+#endif
+
 int main(int argc, char** argv) {
     if (argc<2) {
-        std::cout << "Usage: greedy <file_with_strings>" << std::endl;
+        std::cerr << "Usage: greedy <file_with_strings>" << std::endl;
         return 1;
     }
 
@@ -21,16 +27,15 @@ int main(int argc, char** argv) {
     std::copy(std::istream_iterator<std::string>(inputFile),
               std::istream_iterator<std::string>(),
               std::back_inserter(inputStrings));
-    std::remove_if(std::begin(inputStrings), std::end(inputStrings), [](const std::string& str) { return !str.empty();  });
     boost::sort::pdqsort(std::begin(inputStrings), std::end(inputStrings), [](const std::string& left, const std::string right) { return left.size() > right.size(); });
-    std::cout << "Loaded " << inputStrings.size() << " words" << std::endl;
+    std::cout << "Loaded " << inputStrings.size() << "words" << std::endl;
 
     //1 - Drop shorter words which are contained in a longer ones
     std::set<std::string> contained;
     for(auto outer = inputStrings.cbegin(); outer != inputStrings.cend(); ++outer) {
         for (auto inner = outer+1; inner != inputStrings.cend(); ++inner ) {
             if (boost::algorithm::contains(*outer, *inner)) {
-                std::cout << *outer << " contains " << *inner << std::endl;
+                DEBUG(*outer << " contains " << *inner)
                 contained.insert(*inner);
             }
         }
@@ -55,7 +60,7 @@ int main(int argc, char** argv) {
 
         for (auto inner = outer+1; inner != stringSuffixes.cend(); ++inner ) {
             auto [innerStr, innerSuffixMap] = *inner;
-            //std::cout << "Outer is: " << outerStr << ", inner is: " << innerStr << std::endl;
+            DEBUG("Outer is: " << outerStr << ", inner is: " << innerStr)
             if (maxSuffix > innerStr.size() || maxPrefix > innerStr.size()) {
                 //No reason to continue, as all following words are shorter.
                 break;
@@ -75,15 +80,15 @@ int main(int argc, char** argv) {
         }
 
         if (maxSuffix > 0 && maxSuffix > maxPrefix) {
-            std::cout << "Best prefix for " << outerStr << " is a " << matchPrefix << " with " << maxSuffix << " common characters" << std::endl;
-            std::cout << "Leftover of matched string is: " << std::string(matchPrefix.begin()+maxSuffix, matchPrefix.end()) << std::endl;
+            DEBUG("Best prefix for " << outerStr << " is a " << matchPrefix << " with " << maxSuffix << " common characters")
+            DEBUG("Leftover of matched string is: " << std::string(matchPrefix.begin()+maxSuffix, matchPrefix.end()))
 
             result += outerStr;
             result.append(matchPrefix.begin()+maxSuffix, matchPrefix.end());
             stringSuffixes.erase(std::remove_if(stringSuffixes.begin(), stringSuffixes.end(), [&matchPrefix](auto item) { return std::get<0>(item) == matchPrefix; }), stringSuffixes.end());
         } else if (maxPrefix > 0) {
-            std::cout << "Best suffix for " << outerStr << " is a " << matchSuffix << " with " << maxPrefix << " common characters" << std::endl;
-            std::cout << "Leftover of matched string is: " << std::string(outerStr.begin()+maxPrefix, outerStr.end()) << std::endl;
+            DEBUG("Best suffix for " << outerStr << " is a " << matchSuffix << " with " << maxPrefix << " common characters")
+            DEBUG("Leftover of matched string is: " << std::string(outerStr.begin()+maxPrefix, outerStr.end()))
 
             result += matchSuffix;
             result.append(outerStr.begin()+maxPrefix, outerStr.end());
@@ -96,6 +101,6 @@ int main(int argc, char** argv) {
     }
 
     std::cout << "Super string length is " << result.size() << std::endl;
-    std::cout << "Super string is " << result << std::endl;
+    DEBUG("Super string is " << result)
     return 0;
 }
