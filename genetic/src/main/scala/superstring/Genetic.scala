@@ -1,7 +1,8 @@
+package superstring
+
 import collection.parallel._
 
 object Genetic {
-
   type SuffixMap = Map[Char, Seq[Int]]
   case class MappedString(str: String, suffixMap: SuffixMap)
 
@@ -29,8 +30,9 @@ object Genetic {
 
     //2 - Calculate suffix map for each dataset entry
     System.out.println("Building suffix map")
-    val mappedStrings = nonContainedStrings.map(str => MappedString(str, buildSuffixMap(str))).toList
+    val mappedStrings = nonContainedStrings.map(str => MappedString(str, buildSuffixMap(str))).toVector
 
     //3 - Run genetic algorithm on the string array
+    Solver.Solve(mappedStrings)
   }
 }
