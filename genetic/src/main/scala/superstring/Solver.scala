@@ -16,7 +16,7 @@ object Solver {
   case class RankedGenome(genome: Genome, rank: Int)
 
   private val POPULATION = 250
-  private val GENERATIONS = 10000
+  private val GENERATIONS = 20000
   private val MUTATION_LIMIT = POPULATION / 2
   private val MUTATION_PROBABILITY = 25
   private val FRESH_BLOOD_PROBABILITY = MUTATION_PROBABILITY / 2
@@ -83,7 +83,7 @@ object Solver {
     genome.sliding(2).toVector.map(pair => pairCache.getOrElseUpdate((pair.head, pair.last), {
       val left = strings(pair.head)
       val right = strings(pair.last)
-      left.str.length + right.str.length - 2 * prefixForPair(left, right.str)
+      left.str.length + right.str.length - prefixForPair(left, right.str)
     })).sum
 
   /**
@@ -213,7 +213,7 @@ object Solver {
     val newHorde = new ParVector[Genome](winners.map(_.genome))
 
     val bestString = genomeToString(newHorde.head, strings)
-    System.out.print(s"\rGeneration: $generation, top score pair is ${winners.head.rank}, ${winners.tail.head.rank}, string length is ${bestString.length}\t\t\t")
+    System.out.print(s"\rGeneration: ${GENERATIONS - generation}, top score pair is ${winners.head.rank}, ${winners.tail.head.rank}, string length is ${bestString.length}\t\t\t")
     evolve(newHorde, strings, template, generation - 1)
   }
 
@@ -228,7 +228,7 @@ object Solver {
 
     val bestString = evolve(horde, strings, genomeTemplate, GENERATIONS)
     System.out.println()
-    System.out.println(s"Best string is $bestString")
+    //System.out.println(s"Best string is $bestString")
     System.out.println(s"Best string length is ${bestString.length}")
   }
 }
