@@ -24,7 +24,7 @@ int longestSuffix(const std::string& str, const std::string& suffixStr, const t_
     for(auto pos: positions->second) {
         std::string substr = std::string(suffixStr.begin()+pos, suffixStr.end());
         if (boost::algorithm::starts_with(str, substr)) {
-            return suffixStr.size() - pos; //Positions are zero based and we would like to return number of matching characters, so +1
+            return suffixStr.size() - pos;
         }
     }
     return 0;

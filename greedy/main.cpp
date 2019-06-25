@@ -85,15 +85,18 @@ int main(int argc, char** argv) {
     for(auto outer = stringSuffixes.cbegin(); outer != stringSuffixes.cend();) {
         auto [outerStr, outerSuffixMap] = *outer;
 
+        // Progress bar stuff
         totalWords = stringSuffixes.size();
         ++seenWords;
         progress(seenWords, totalWords);
 
+        //We will keep our best choices here
         std::string matchPrefix;
         int maxSuffix = 0;
         std::string matchSuffix;
         int maxPrefix = 0;
 
+        //Iterate over the words below us and find one with longest matching prefix or sufffix.
         for (auto inner = outer+1; inner != stringSuffixes.cend(); ++inner ) {
             auto [innerStr, innerSuffixMap] = *inner;
             DEBUG("Outer is: " << outerStr << ", inner is: " << innerStr)
