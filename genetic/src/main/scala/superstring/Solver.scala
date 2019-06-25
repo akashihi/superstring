@@ -5,21 +5,24 @@ import scala.language.postfixOps
 import scala.collection.parallel.immutable._
 import superstring.Genetic.MappedString
 
+import scala.collection.concurrent.TrieMap
+
 
 
 object Solver {
-  private val POPULATION = 25
+  type Genome = Vector[Int]
+  type Horde = ParVector[Genome]
+
+  case class RankedGenome(genome: Genome, rank: Int)
+
+  private val POPULATION = 250
   private val GENERATIONS = 10000
   private val MUTATION_LIMIT = POPULATION / 2
   private val MUTATION_PROBABILITY = 25
   private val FRESH_BLOOD_PROBABILITY = MUTATION_PROBABILITY / 2
 
   private val r = scala.util.Random
-
-  type Genome = Vector[Int]
-  type Horde = ParVector[Genome]
-
-  case class RankedGenome(genome: Genome, rank: Int)
+  private val pairCache = new TrieMap[(Int, Int), Int]()
 
   /**
     * Swaps two vector elements, specified by their indices.
@@ -35,6 +38,14 @@ object Solver {
     v.updated(left, rightVal).updated(right, leftVal)
   }
 
+  /**
+    * Finds lengths of a common prefix-suffix for pairs of strings
+    * @param left 'suffix' string
+    * @param right 'prefix' string
+    * @param suffixes map with suffixes for a 'suffix' string
+    * @param lengths sequence of lenghts of already found suffixes
+    * @return sequence of possible common prefixes-suffixes
+    */
   @tailrec
   private def prefixLengths(left: String, right: String, suffixes: Seq[Int], lengths: Seq[Int]): Seq[Int] = {
     if (suffixes.isEmpty) {
@@ -50,17 +61,30 @@ object Solver {
     prefixLengths(left, right, suffixes.tail, newSuffixes)
   }
 
+  /**
+    * Selects a best prefixx-suffix for a pair
+    * @param left 'suffix' string
+    * @param right 'prefix' string
+    * @return length of a best common prefix-suffix
+    */
   private def prefixForPair(left: MappedString, right: String): Int = {
     val suffixMap = left.suffixMap.getOrElse(right.head, Seq.empty[Int])
     prefixLengths(left.str, right, suffixMap, Seq.empty[Int]).reduceOption(_ min _).getOrElse(0)
   }
 
-  private def fitness(genome: Genome, strings: Vector[MappedString]): Int =
-    genome.sliding(2).toVector.map(pair => {
+  /**
+    * Genetic algorithm fitness function. Calculates cost score for a genome, by
+    * estimating resulting string length
+    * @param genome Genome to process
+    * @param strings Input strings with their suffixes.
+    * @return genome rank
+    */
+  def fitness(genome: Genome, strings: Vector[MappedString]): Int =
+    genome.sliding(2).toVector.map(pair => pairCache.getOrElseUpdate((pair.head, pair.last), {
       val left = strings(pair.head)
       val right = strings(pair.last)
       left.str.length + right.str.length - 2 * prefixForPair(left, right.str)
-    }).sum
+    })).sum
 
   /**
     *
@@ -94,6 +118,12 @@ object Solver {
     breed(nextGeneration, matings - 1)
   }
 
+  /**
+    * Mutates a horde randomly.
+    * @param horde Horde to process
+    * @param mutations NUmber of mutations left
+    * @return Horde with some mutated genomes
+    */
   @tailrec
   def mutate(horde: Horde, mutations: Int): Horde = {
     if (mutations == 0) {
@@ -114,6 +144,12 @@ object Solver {
     mutate(mutatedHorde, mutations - 1)
   }
 
+  /**
+    * Evicts genomes from the horde by randomly choosing a pair and removing
+    * genome with a highest rank. Stop when horde size reaches desired population size.
+    * @param horde Horde to work on
+    * @return Horde with only the best genomes
+    */
   @tailrec
   def tourney(horde: ParVector[RankedGenome]): ParVector[RankedGenome] = {
     if (horde.size == POPULATION) {
@@ -130,6 +166,12 @@ object Solver {
     }
   }
 
+  /**
+    * Helper function which converts genome to the actual string.
+    * @param genome Genome to operate on
+    * @param strings Input string array
+    * @return string decoded from genome
+    */
   def genomeToString(genome: Genome, strings: Vector[MappedString]): String = {
     val result = new StringBuilder
     result.append(strings(genome.head).str)
@@ -140,6 +182,14 @@ object Solver {
     result.toString()
   }
 
+  /**
+    * Tries to find best superstring by messing with current variants and dropping worst ones
+    * @param horde A horde to operate on
+    * @param strings Array of input strings
+    * @param template Template of a single genom
+    * @param generation Number of current generation
+    * @return The bext found superstring
+    */
   @tailrec
   def evolve(horde: Horde, strings: Vector[MappedString], template: Genome, generation: Int): String = {
     if (generation == 0) {
@@ -163,10 +213,14 @@ object Solver {
     val newHorde = new ParVector[Genome](winners.map(_.genome))
 
     val bestString = genomeToString(newHorde.head, strings)
-    System.out.print(s"\rGeneration: $generation, top score pair is ${winners.head.rank}, ${winners.tail.head.rank}, string length is ${bestString.length}")
+    System.out.print(s"\rGeneration: $generation, top score pair is ${winners.head.rank}, ${winners.tail.head.rank}, string length is ${bestString.length}\t\t\t")
     evolve(newHorde, strings, template, generation - 1)
   }
 
+  /**
+    * Finds the best superstring for specified array of strings.
+    * @param strings Strings with maps of their suffixes
+    */
   def Solve(strings: Vector[MappedString]): Unit = {
     val genomeTemplate = 0 until strings.size toVector
 
