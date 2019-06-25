@@ -1,12 +1,15 @@
 package superstring
 
+import scala.annotation.tailrec
 import scala.language.postfixOps
+import scala.collection.parallel.immutable._
 import superstring.Genetic.MappedString
 
-import scala.annotation.tailrec
+
 
 object Solver {
   private val POPULATION = 25
+  private val GENERATIONS = 10000
   private val MUTATION_LIMIT = POPULATION / 2
   private val MUTATION_PROBABILITY = 25
   private val FRESH_BLOOD_PROBABILITY = MUTATION_PROBABILITY / 2
@@ -14,7 +17,7 @@ object Solver {
   private val r = scala.util.Random
 
   type Genome = Vector[Int]
-  type Horde = Vector[Genome]
+  type Horde = ParVector[Genome]
 
   case class RankedGenome(genome: Genome, rank: Int)
 
@@ -86,7 +89,7 @@ object Solver {
     val offSpringFirst = swapVectorElements(horde(firstParent), geneFirst, geneSecond)
     val offSpringSecond = swapVectorElements(horde(secondParent), geneFirst, geneSecond)
 
-    val nextGeneration = horde :++ Vector(offSpringFirst, offSpringSecond)
+    val nextGeneration = horde ++ ParVector(offSpringFirst, offSpringSecond)
 
     breed(nextGeneration, matings - 1)
   }
@@ -112,7 +115,7 @@ object Solver {
   }
 
   @tailrec
-  def tourney(horde: Seq[RankedGenome]): Seq[RankedGenome] = {
+  def tourney(horde: ParVector[RankedGenome]): ParVector[RankedGenome] = {
     if (horde.size == POPULATION) {
       return horde
     }
@@ -137,24 +140,41 @@ object Solver {
     result.toString()
   }
 
-  def Solve(strings: Vector[MappedString]) = {
-    val genomeTemplate = 0 until strings.size toVector
+  @tailrec
+  def evolve(horde: Horde, strings: Vector[MappedString], template: Genome, generation: Int): String = {
+    if (generation == 0) {
+      return genomeToString(horde.head, strings)
+    }
 
-    var horde = (1 to POPULATION).map(_ => r.shuffle(genomeTemplate)) toVector
-
-    //while(true) { //TODO exit condition
+    //Make next population
     val nextGeneration = breed(horde, POPULATION / 2)
     val mutatedGeneration = mutate(nextGeneration, MUTATION_LIMIT)
     val updatedGeneration = if (r.between(1, 100) < FRESH_BLOOD_PROBABILITY) {
-      mutatedGeneration :+ r.shuffle(genomeTemplate)
+      mutatedGeneration :+ r.shuffle(template)
     } else mutatedGeneration
 
     //Apply fitness function to the population
     val ranked = updatedGeneration
       .map(genome => RankedGenome(genome, fitness(genome, strings)))
 
-    val newHorde = tourney(ranked).sortBy(_.rank).map(_.genome)
-    System.out.println(s"Best string is ${genomeToString(newHorde.head, strings)}")
-    System.out.println(s"Best string length is ${genomeToString(newHorde.head, strings).length}")
+    //Select best genomes
+    val winners = tourney(ranked).toVector.sortBy(_.rank)
+
+    val newHorde = new ParVector[Genome](winners.map(_.genome))
+
+    val bestString = genomeToString(newHorde.head, strings)
+    System.out.print(s"\rGeneration: $generation, top score pair is ${winners.head.rank}, ${winners.tail.head.rank}, string length is ${bestString.length}")
+    evolve(newHorde, strings, template, generation - 1)
+  }
+
+  def Solve(strings: Vector[MappedString]): Unit = {
+    val genomeTemplate = 0 until strings.size toVector
+
+    val horde = new ParVector[Vector[Int]]((1 to POPULATION).map(_ => r.shuffle(genomeTemplate)).toVector)
+
+    val bestString = evolve(horde, strings, genomeTemplate, GENERATIONS)
+    System.out.println()
+    System.out.println(s"Best string is $bestString")
+    System.out.println(s"Best string length is ${bestString.length}")
   }
 }
