@@ -1,7 +1,7 @@
 package superstring
 
 import scala.language.postfixOps
-import superstring.Genetic.{MappedString, SuffixMap}
+import superstring.Genetic.MappedString
 
 import scala.annotation.tailrec
 
@@ -49,12 +49,15 @@ object Solver {
 
   private def prefixForPair(left: MappedString, right: String): Int = {
     val suffixMap = left.suffixMap.getOrElse(right.head, Seq.empty[Int])
-    val prefixLength = prefixLengths(left.str, right, suffixMap, Seq.empty[Int]).reduceOption(_ min _).getOrElse(0)
-    left.str.length + right.length - 2 * prefixLength
+    prefixLengths(left.str, right, suffixMap, Seq.empty[Int]).reduceOption(_ min _).getOrElse(0)
   }
 
   private def fitness(genome: Genome, strings: Vector[MappedString]): Int =
-    genome.sliding(2).toVector.map(pair => prefixForPair(strings(pair(0)), strings(pair(1)).str)).sum
+    genome.sliding(2).toVector.map(pair => {
+      val left = strings(pair.head)
+      val right = strings(pair.last)
+      left.str.length + right.str.length - 2 * prefixForPair(left, right.str)
+    }).sum
 
   /**
     *
@@ -108,6 +111,32 @@ object Solver {
     mutate(mutatedHorde, mutations - 1)
   }
 
+  @tailrec
+  def tourney(horde: Seq[RankedGenome]): Seq[RankedGenome] = {
+    if (horde.size == POPULATION) {
+      return horde
+    }
+
+    val firstParty = r.between(0, horde.length)
+    val secondParty = r.between(0, horde.length)
+
+    if (horde(firstParty).rank > horde(secondParty).rank) {
+      tourney(horde.take(firstParty) ++ horde.drop(firstParty + 1))
+    } else {
+      tourney(horde.take(secondParty) ++ horde.drop(secondParty + 1))
+    }
+  }
+
+  def genomeToString(genome: Genome, strings: Vector[MappedString]): String = {
+    val result = new StringBuilder
+    result.append(strings(genome.head).str)
+    genome.sliding(2).toVector
+      .map(pair => (strings(pair(1)).str, prefixForPair(strings(pair(0)), strings(pair(1)).str)))
+      .map(strWithPrefix => strWithPrefix._1.slice(strWithPrefix._2, strWithPrefix._1.length))
+      .foreach(result.append)
+    result.toString()
+  }
+
   def Solve(strings: Vector[MappedString]) = {
     val genomeTemplate = 0 until strings.size toVector
 
@@ -123,10 +152,9 @@ object Solver {
     //Apply fitness function to the population
     val ranked = updatedGeneration
       .map(genome => RankedGenome(genome, fitness(genome, strings)))
-        .sortBy(_.rank)
-        System.out.println(ranked)
-    //val markedGeneration = applyFitness
-    //horde = removeLoosers
-    //}
+
+    val newHorde = tourney(ranked).sortBy(_.rank).map(_.genome)
+    System.out.println(s"Best string is ${genomeToString(newHorde.head, strings)}")
+    System.out.println(s"Best string length is ${genomeToString(newHorde.head, strings).length}")
   }
 }
